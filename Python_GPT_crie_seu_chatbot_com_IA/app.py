@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from time import sleep
 from helpers import *
 from selecionar_persona import *
+from selecionar_documento import *
 import os
 
 
@@ -12,14 +13,15 @@ load_dotenv()
 cliente = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 modelo = "gpt-4"
 
-contexto = carrega("dados/ecomaert.txt")
-
 
 def bot(prompt):
     maximo_tentativas = 1
     repeticao = 0
 
     personalidade = personas[selecionar_persona(prompt)]
+    contexto = selecionar_contexto(prompt)
+    contexto_selecionado = selecionar_documento(contexto)
+
 
     while True:
         try:
@@ -32,7 +34,7 @@ def bot(prompt):
             Você deve adotar a personalidade do chatbot conforme descrito abaixo.
 
             # Contexto do e-commerce:
-            {contexto}
+            {contexto_selecionado}
 
             # Personalidade do chatbot:
             {personalidade}
