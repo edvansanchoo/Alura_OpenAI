@@ -3,6 +3,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from time import sleep
 from helpers import *
+from selecionar_persona import *
 import os
 
 
@@ -18,15 +19,23 @@ def bot(prompt):
     maximo_tentativas = 1
     repeticao = 0
 
+    personalidade = personas[selecionar_persona(prompt)]
+
     while True:
         try:
             prompt_do_sistema = f"""
             Você é um chatbot de atendimento a clientes de um e-commerce. 
             Você não deve responder perguntas que não sejam dados do e-commerce informado!
             
+            # Instruções:
             Você deve gerar resposta utilizando o contexto do e-commerce abaixo.
+            Você deve adotar a personalidade do chatbot conforme descrito abaixo.
+
             # Contexto do e-commerce:
             {contexto}
+
+            # Personalidade do chatbot:
+            {personalidade}
             """
             response = cliente.chat.completions.create(
                 messages=[
