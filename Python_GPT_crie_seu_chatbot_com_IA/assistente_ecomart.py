@@ -1,31 +1,54 @@
 from openai import OpenAI
-from dotenv import load_dotenv
 import os
-from time import sleep
-from helpers import *
-from selecionar_persona import *
 
-load_dotenv()
+class AssistenteEcoMart:
+    def __init__(self, contexto, persona, modelo="gpt-4o", sourceAgent="OpenAI"):
+        if sourceAgent == "OpenAI":
+            self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        elif sourceAgent == "GitHubModels":
+            self.client = OpenAI(
+                api_key=os.getenv("GITHUB_TOKEN"),
+                base_url="https://models.inference.ai.azure.com"
+            )
 
-cliente = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-modelo = "gpt-4"
-contexto = carrega("dados/ecomart.txt")
+        self.modelo = modelo
+        self.sourceAgent = sourceAgent
 
-assistente = cliente.beta.assistants.create(
-    name="Atendente EcoMart",
-    instructions = f"""
-        Você é um chatbot de atendimento a clientes de um e-commerce. 
-        Você não deve responder perguntas que não sejam dados do ecommerce informado!
-        Além disso, adote a persona abaixo para responder ao cliente.
-        
+        self.system_prompt = f"""
+        Você é um chatbot de atendimento a clientes de um e-commerce.
+        Você NÃO deve responder perguntas fora do ecommerce.
+
         ## Contexto
         {contexto}
-        
-        ## Persona
-        
-        {personas["neutro"]}
-    """,
-    model = modelo,
-)
 
-print(assistente.id)
+        ## Persona
+        {persona}
+        """
+
+    def responder(self, historico, prompt):
+        mensagens = [
+            {"role": "system", "content": self.system_prompt},
+            *historico,
+            {"role": "user", "content": prompt}
+        ]
+
+        # 🔹 OpenAI (API nova)
+        if self.sourceAgent == "OpenAI":
+            response = self.client.responses.create(
+                model=self.modelo,
+                input=mensagens
+            )
+            texto = response.output_text
+
+        # 🔹 GitHub Models (Chat Completions)
+        else:
+            response = self.client.chat.completions.create(
+                model=self.modelo,
+                messages=mensagens
+            )
+            texto = response.choices[0].message.content
+
+        historico.append({"role": "user", "content": prompt})
+        historico.append({"role": "assistant", "content": texto})
+
+        return texto
