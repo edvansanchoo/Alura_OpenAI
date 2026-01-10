@@ -11,8 +11,6 @@ load_dotenv()
 contexto = carrega("dados/ecomart.txt")
 
 assistente = AssistenteEcoMart(
-    contexto=contexto,
-    persona=personas["neutro"],
     sourceAgent="GitHubModels"
 )
 
@@ -29,7 +27,7 @@ def chat():
         session["historico"] = []
 
     try:
-        resposta = assistente.responder(session["historico"], prompt)
+        resposta = assistente.responder(session["historico"], prompt, contexto)
         session.modified = True
         try:
             return resposta.content[0].text.value

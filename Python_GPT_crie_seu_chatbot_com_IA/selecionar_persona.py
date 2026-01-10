@@ -39,24 +39,31 @@ personas = {
     """
 }
 
-def selecionar_persona(mensagem_usuario):
-    prompt_sistema = f"""
+def selecionar_persona(agente, mensagem_usuario):
+    system_prompt = f"""
         Faça uma análise da mensagem informada abaixo  para identificar se o sentimento é: positivo, neutro ou negativo.
         Retorne apenas um dos três tipos de sentimentos informados como resposta.
     """
 
-    resposta = cliente.chat.completions.create(
-        model=modelo,
-        messages=[
-            {
-                "role": "system",
-                "content": prompt_sistema
-            },
-            {
-                "role": "user",
-                "content": mensagem_usuario
-            }
-        ],
-        temperature=1,
-    )
-    return resposta.choices[0].message.content.lower()
+    mensagens = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": mensagem_usuario}
+        ]
+
+    # 🔹 OpenAI (API nova)
+    if agente.sourceAgent == "OpenAI":
+        response = agente.client.responses.create(
+            model=agente.modelo,
+            input=mensagens
+        )
+        texto = response.output_text
+
+    # 🔹 GitHub Models (Chat Completions)
+    else:
+        response = agente.client.chat.completions.create(
+            model=agente.modelo,
+            messages=mensagens
+        )
+        texto = response.choices[0].message.content
+
+    return texto
