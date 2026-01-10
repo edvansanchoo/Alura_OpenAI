@@ -1,8 +1,9 @@
 from openai import OpenAI
+from selecionar_persona import *
 import os
 
 class AssistenteEcoMart:
-    def __init__(self, contexto, persona, modelo="gpt-4o", sourceAgent="OpenAI"):
+    def __init__(self, modelo="gpt-4.1-mini", sourceAgent="OpenAI"):
         if sourceAgent == "OpenAI":
             self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         elif sourceAgent == "GitHubModels":
@@ -14,20 +15,24 @@ class AssistenteEcoMart:
         self.modelo = modelo
         self.sourceAgent = sourceAgent
 
-        self.system_prompt = f"""
-        Você é um chatbot de atendimento a clientes de um e-commerce.
-        Você NÃO deve responder perguntas fora do ecommerce.
+    def responder(self, historico, prompt, contexto):
+        persona = personas[selecionar_persona(self, prompt)]
 
-        ## Contexto
-        {contexto}
+        system_prompt = f"""
+            Você é um chatbot de atendimento a clientes de um e-commerce.
+            Você NÃO deve responder perguntas fora do ecommerce.
 
-        ## Persona
-        {persona}
-        """
+            ## Contexto
+            {contexto}
 
-    def responder(self, historico, prompt):
+            Assuma, de agora em diante, a persona abaixo e ignore as personalidades anteriores.
+
+            ## Persona
+            {persona}
+            """
+
         mensagens = [
-            {"role": "system", "content": self.system_prompt},
+            {"role": "system", "content": system_prompt},
             *historico,
             {"role": "user", "content": prompt}
         ]
