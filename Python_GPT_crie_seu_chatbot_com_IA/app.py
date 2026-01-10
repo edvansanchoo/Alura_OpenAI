@@ -1,69 +1,20 @@
-from flask import Flask,render_template, request, Response
-from openai import OpenAI
+from flask import Flask,render_template, request, Response, session
 from dotenv import load_dotenv
-from time import sleep
 from helpers import *
 from selecionar_persona import *
-from selecionar_documento import *
+from assistente_ecomart import *
 import os
 
 
 load_dotenv()
 
-cliente = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-modelo = "gpt-4"
+contexto = carrega("dados/ecomart.txt")
 
-
-def bot(prompt):
-    maximo_tentativas = 1
-    repeticao = 0
-
-    personalidade = personas[selecionar_persona(prompt)]
-    contexto = selecionar_contexto(prompt)
-    contexto_selecionado = selecionar_documento(contexto)
-
-
-    while True:
-        try:
-            prompt_do_sistema = f"""
-            Você é um chatbot de atendimento a clientes de um e-commerce. 
-            Você não deve responder perguntas que não sejam dados do e-commerce informado!
-            
-            # Instruções:
-            Você deve gerar resposta utilizando o contexto do e-commerce abaixo.
-            Você deve adotar a personalidade do chatbot conforme descrito abaixo.
-
-            # Contexto do e-commerce:
-            {contexto_selecionado}
-
-            # Personalidade do chatbot:
-            {personalidade}
-            """
-            response = cliente.chat.completions.create(
-                messages=[
-                        {
-                                "role": "system",
-                                "content": prompt_do_sistema
-                        },
-                        {
-                                "role": "user",
-                                "content": prompt
-                        }
-                ],
-                temperature=1,
-                max_tokens=256,
-                top_p=1,
-                frequency_penalty=0,
-                presence_penalty=0,
-                model = modelo)
-            print('Resposta recebida do OpenAI', response)
-            return response
-        except Exception as erro:
-                repeticao += 1
-                if repeticao >= maximo_tentativas:
-                        return "Erro no GPT: %s" % erro
-                print('Erro de comunicação com OpenAI:', erro)
-                sleep(1)
+assistente = AssistenteEcoMart(
+    contexto=contexto,
+    persona=personas["neutro"],
+    sourceAgent="GitHubModels"
+)
 
 
 
@@ -73,11 +24,20 @@ app.secret_key = 'alura'
 @app.route("/chat", methods=["POST"])
 def chat():
     prompt = request.json["msg"]
-    resposta = bot(prompt)
-    if resposta.__contains__("Erro no GPT"):
-        return Response(resposta, status=500)
-    texto_resposta = resposta.choices[0].message.content
-    return texto_resposta
+
+    if "historico" not in session:
+        session["historico"] = []
+
+    try:
+        resposta = assistente.responder(session["historico"], prompt)
+        session.modified = True
+        try:
+            return resposta.content[0].text.value
+        except Exception:
+            return resposta
+    except Exception as erro:
+        return Response(f"Erro no GPT: {erro}", status=500)
+
 
 @app.route("/")
 def home():
