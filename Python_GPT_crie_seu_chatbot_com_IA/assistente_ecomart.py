@@ -1,9 +1,10 @@
 from openai import OpenAI
 from selecionar_persona import *
+from helpers import *
 import os
 
 class AssistenteEcoMart:
-    def __init__(self, modelo="gpt-4.1-mini", sourceAgent="OpenAI"):
+    def __init__(self, modelo="gpt-4o", sourceAgent="OpenAI"):
         if sourceAgent == "OpenAI":
             self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         elif sourceAgent == "GitHubModels":
@@ -15,24 +16,10 @@ class AssistenteEcoMart:
         self.modelo = modelo
         self.sourceAgent = sourceAgent
 
-    def responder(self, historico, prompt, contexto):
-        persona = personas[selecionar_persona(self, prompt)]
-
-        system_prompt = f"""
-            Você é um chatbot de atendimento a clientes de um e-commerce.
-            Você NÃO deve responder perguntas fora do ecommerce.
-
-            ## Contexto
-            {contexto}
-
-            Assuma, de agora em diante, a persona abaixo e ignore as personalidades anteriores.
-
-            ## Persona
-            {persona}
-            """
+    def responder_com_historico(self, historico, prompt, roles):
 
         mensagens = [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": roles},
             *historico,
             {"role": "user", "content": prompt}
         ]
@@ -57,3 +44,29 @@ class AssistenteEcoMart:
         historico.append({"role": "assistant", "content": texto})
 
         return texto
+
+
+    def analisar_imagem(self, caminho_imagem, roles):
+        imagem_base64 = encodar_imagem(caminho_imagem)
+
+        resposta = self.client.chat.completions.create(
+            model=self.modelo,
+            messages=[
+                {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text", "text": roles
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{imagem_base64}",
+                        },
+                    },
+                ],
+                }
+            ],
+            max_tokens=300,
+            )
+        return resposta.choices[0].message.content
