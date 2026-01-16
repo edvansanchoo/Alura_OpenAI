@@ -167,27 +167,30 @@ class AgentBuilderService:
 
     def _executar_ferramenta(self, nome_funcao, argumentos):
         """Executa a ferramenta chamada pelo agente"""
-        if nome_funcao == "listar_arquivos":
-            return json.dumps(listar_arquivos(argumentos["diretorio"]))
-        elif nome_funcao == "ler_arquivo":
-            return ler_arquivo(argumentos["caminho_arquivo"])
-        elif nome_funcao == "escrever_arquivo":
-            escrever_arquivo(argumentos["caminho_arquivo"], argumentos["conteudo"])
-            return "Arquivo escrito com sucesso"
-        elif nome_funcao == "apagar_arquivo":
-            apagar_arquivo(argumentos["caminho_arquivo"])
-            return "Arquivo apagado com sucesso"
-        elif nome_funcao == "criar_diretorio":
-            criar_diretorio(argumentos["caminho_diretorio"])
-            return "Diretório criado com sucesso"
-        elif nome_funcao == "apagar_diretorio":
-            apagar_diretorio(argumentos["caminho_diretorio"])
-            return "Diretório apagado com sucesso"
-        elif nome_funcao == "mover_arquivo":
-            mover_arquivo(argumentos["caminho_origem"], argumentos["caminho_destino"])
-            return "Arquivo movido com sucesso"
-        elif nome_funcao == "listar_diretorios":
-            return json.dumps(listar_diretorios(argumentos["diretorio"]))
+        
+        # Mapa de funções que retornam JSON
+        funcoes_json = {
+            "listar_arquivos": lambda args: json.dumps(listar_arquivos(args["diretorio"])),
+            "listar_diretorios": lambda args: json.dumps(listar_diretorios(args["diretorio"])),
+        }
+        
+        # Mapa de funções que retornam mensagem de sucesso
+        funcoes_acao = {
+            "ler_arquivo": lambda args: ler_arquivo(args["caminho_arquivo"]),
+            "escrever_arquivo": lambda args: (escrever_arquivo(args["caminho_arquivo"], args["conteudo"]), "Arquivo escrito com sucesso")[1],
+            "apagar_arquivo": lambda args: (apagar_arquivo(args["caminho_arquivo"]), "Arquivo apagado com sucesso")[1],
+            "criar_diretorio": lambda args: (criar_diretorio(args["caminho_diretorio"]), "Diretório criado com sucesso")[1],
+            "apagar_diretorio": lambda args: (apagar_diretorio(args["caminho_diretorio"]), "Diretório apagado com sucesso")[1],
+            "mover_arquivo": lambda args: (mover_arquivo(args["caminho_origem"], args["caminho_destino"]), "Arquivo movido com sucesso")[1],
+        }
+        
+        # Combinar todos os mapas
+        todas_funcoes = {**funcoes_json, **funcoes_acao}
+        
+        # Executar ou retornar erro
+        if nome_funcao in todas_funcoes:
+            return todas_funcoes[nome_funcao](argumentos)
+    
         return "Ferramenta não encontrada"
 
     def responder_com_historico(self, historico, prompt, roles):
